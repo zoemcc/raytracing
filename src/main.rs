@@ -164,12 +164,12 @@ fn to_color(pixel_color: Vec3) -> image::Rgb<u8> {
 fn hit_sphere(center: Vec3, radius: f64, ray: &Ray) -> f64 {
     let oc = (*ray).orig - center;
     let a = (*ray).dir.length_squared();
-    let b = 2.0 * dot(oc, (*ray).dir);
+    let half_b = dot(oc, (*ray).dir);
     let c = oc.length_squared() - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
+    let discriminant = half_b * half_b - a * c;
 
     if discriminant < 0.0 { -1.0 }
-    else { (-b - discriminant.sqrt()) / (2.0 * a) }
+    else { (-half_b - discriminant.sqrt()) / (a) }
 }
 
 fn ray_color(ray: Ray) -> image::Rgb<u8> {
