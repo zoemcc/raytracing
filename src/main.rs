@@ -2,6 +2,9 @@ extern crate image;
 
 use std::ops::{Neg, Add, Sub, Mul, Div};
 use std::cmp::Ordering::{Equal, Less, Greater};
+use rand::Rng;
+use rand::seq::index::sample;
+
 
 #[derive(Debug, Copy, Clone)]
 struct Vec3 {
@@ -135,6 +138,39 @@ fn dot(v1: Vec3, v2: Vec3) -> f64 {
     v1.e[0] * v2.e[0] + v1.e[1] * v2.e[1] + v1.e[2] * v2.e[2]
 }
 
+struct Camera {
+    origin: Vec3,
+    lower_left_corner: Vec3,
+    horizontal: Vec3,
+    vertical: Vec3
+}
+
+impl Camera {
+    fn new() -> Camera {
+        let aspect_ratio = 16.0 / 9.0;
+        let viewport_height = 2.0;
+        let viewport_width = aspect_ratio * viewport_height;
+        let focal_length = 1.0;
+
+        let origin = Vec3::zero();
+        let horizontal = viewport_width * Vec3::x_axis();
+        let vertical = viewport_height * Vec3::y_axis();
+
+        Camera {
+            origin,
+            horizontal,
+            vertical,
+            lower_left_corner: origin - focal_length * Vec3::z_axis()
+                - horizontal / 2.0 - vertical / 2.0
+        }
+    }
+
+    fn get_ray(&self, u: f64, v: f64) -> Ray {
+        Ray::new(self.origin, self.lower_left_corner - self.origin
+            + u * self.horizontal + v * self.vertical)
+    }
+}
+
 struct Ray {
     origin: Vec3,
     dir: Vec3
@@ -261,7 +297,16 @@ impl Hittable for Sphere {
     }
 }
 
-fn to_color(pixel_color: Vec3) -> image::Rgb<u8> {
+fn to_color(pixel_color: Vec3, samples_per_pixel: i32) -> image::Rgb<u8> {
+    let scaled_pixel_color = pixel_color / (samples_per_pixel as f64);
+    let r = (256.0 * clamp(scaled_pixel_color.x(), 0.0, 0.999)).floor() as u8;
+    let g = (256.0 * clamp(scaled_pixel_color.y(), 0.0, 0.999)).floor() as u8;
+    let b = (256.0 * clamp(scaled_pixel_color.z(), 0.0, 0.999)).floor() as u8;
+
+    image::Rgb([r, g, b])
+}
+
+fn to_color_single(pixel_color: Vec3) -> image::Rgb<u8> {
     let r = (255.999 * pixel_color.x()).floor() as u8;
     let g = (255.999 * pixel_color.y()).floor() as u8;
     let b = (255.999 * pixel_color.z()).floor() as u8;
@@ -269,14 +314,18 @@ fn to_color(pixel_color: Vec3) -> image::Rgb<u8> {
     image::Rgb([r, g, b])
 }
 
-fn ray_color(ray: Ray, hittable: &Box<dyn Hittable>) -> image::Rgb<u8> {
+fn clamp(x: f64, min: f64, max: f64) -> f64 {
+    if x < min {min} else if x > max {max} else {x}
+}
+
+fn ray_color(ray: Ray, hittable: &Box<dyn Hittable>) -> Vec3 {
     if let Some(hit_record) = (*hittable).hit(&ray, 0.0, f64::INFINITY) {
-        to_color(0.5 * (hit_record.normal + Vec3::one()))
+        0.5 * (hit_record.normal + Vec3::one())
     }
     else {
         let unit_ray_dir = ray.dir.unit_vector();
         let t = 0.5 * (unit_ray_dir.y() + 1.0);
-        to_color((1.0 - t) * Vec3::one() + t * Vec3::new(0.5, 0.7, 1.0))
+        (1.0 - t) * Vec3::one() + t * Vec3::new(0.5, 0.7, 1.0)
     }
 }
 
@@ -284,19 +333,16 @@ fn ray_color(ray: Ray, hittable: &Box<dyn Hittable>) -> image::Rgb<u8> {
 fn main() -> std::io::Result<()> {
     println!("Configuring viewport and image buffer.");
 
+    let mut rng = rand::thread_rng();
+    println!("Float: {}", rng.gen_range(0.0, 1.0));
+
     let aspect_ratio = 16.0 / 9.0;
     let image_width: u32 = 384;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
+    let samples_per_pixel = 100;
 
-    let viewport_height = 2.0;
-    let viewport_width = aspect_ratio * viewport_height;
-    let focal_length = 1.0;
-
-    let origin = Vec3::zero();
-    let horizontal = viewport_width * Vec3::x_axis();
-    let vertical = viewport_height * Vec3::y_axis();
-    let lower_left_corner = origin - horizontal / 2.0 - vertical / 2.0
-        - focal_length * Vec3::z_axis();
+    println!("Image width: {}, Image Height: {}, Samples Per Pixel: {}",
+             image_width, image_height, samples_per_pixel);
 
     let world: Box<dyn Hittable> = Box::new(HittableList {
         hittables: vec![
@@ -304,6 +350,8 @@ fn main() -> std::io::Result<()> {
             Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0))
         ]
     });
+
+    let cam: Camera = Camera::new();
 
     let mut imgbuf = image::ImageBuffer::new(image_width, image_height);
 
@@ -313,18 +361,19 @@ fn main() -> std::io::Result<()> {
         let i = x as f64;
         let j = ((image_height - 1) - y) as f64;
 
-        let u = i / (image_width - 1) as f64;
-        let v = j / (image_height - 1) as f64;
+        let pixel_color: Vec3 = (0..samples_per_pixel).map(|_| {
+            let u = (i + rng.gen_range(0.0, 1.0)) / (image_width - 1) as f64;
+            let v = (j + rng.gen_range(0.0, 1.0)) / (image_height - 1) as f64;
+            let ray = cam.get_ray(u, v);
+            ray_color(ray, &world)
+        }).fold(Vec3::zero(), |x, y| x + y);
 
-        let ray = Ray::new(origin, lower_left_corner +
-            u * horizontal + v * vertical - origin);
-
-        *pixel = ray_color(ray, &world);
+        *pixel = to_color(pixel_color, samples_per_pixel);
     }
 
     println!("Finished rendering image.");
 
-    imgbuf.save("./output/hittable_list.png").unwrap();
+    imgbuf.save("./output/anti_aliasing_100.png").unwrap();
 
     println!("Finished saving image.");
 
