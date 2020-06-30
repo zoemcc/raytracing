@@ -1,6 +1,7 @@
 extern crate image;
 
 use std::ops::{Neg, Add, Sub, Mul, Div};
+use std::cmp::Ordering::{Equal, Less, Greater};
 
 #[derive(Debug, Copy, Clone)]
 struct Vec3 {
@@ -135,23 +136,130 @@ fn dot(v1: Vec3, v2: Vec3) -> f64 {
 }
 
 struct Ray {
-    orig: Vec3,
+    origin: Vec3,
     dir: Vec3
 }
 
 impl Ray {
     fn new(origin: Vec3, direction: Vec3) -> Ray {
         Ray {
-            orig: origin,
+            origin,
             dir: direction
         }
     }
 
     fn at(&self, t: f64) -> Vec3 {
-        self.orig + (t * self.dir)
+        self.origin + (t * self.dir)
     }
 }
 
+struct HitRecord {
+    point: Vec3,
+    normal: Vec3,
+    t: f64,
+    front_face: bool
+}
+
+impl HitRecord {
+    fn new(point: Vec3, normal: Vec3, t: f64, front_face: bool) -> HitRecord {
+        HitRecord {
+            point,
+            normal,
+            t,
+            front_face
+        }
+    }
+}
+
+fn face_normal_adjustment(ray_direction: Vec3, outward_normal: Vec3) -> (Vec3, bool) {
+    let front_face: bool = dot(ray_direction, outward_normal) < 0.0;
+    let normal = if front_face {outward_normal} else {-1.0 * outward_normal};
+    (normal, front_face)
+}
+
+trait Hittable {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
+}
+
+struct HittableList {
+    hittables: Vec<Box<dyn Hittable>>
+}
+
+impl HittableList {
+    fn new() -> HittableList {
+        HittableList {
+            hittables: Vec::new()
+        }
+    }
+
+    fn add(&mut self, to_add: Box<dyn Hittable>) -> () {
+        self.hittables.push(to_add);
+    }
+
+    fn clear(&mut self) -> () {
+        self.hittables.clear();
+    }
+}
+
+impl Hittable for HittableList {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let min_hit_opt_opt = self.hittables.iter()
+            .map(|x| x.hit(ray, t_min, t_max))
+            .min_by(|x, y| {
+                match (x, y) {
+                    (Some(x_hit_record), Some(y_hit_record)) => {
+                        if x_hit_record.t < y_hit_record.t {Less} else {Greater}
+                    },
+                    (Some(_), None) => Less,
+                    (None, Some(_)) => Greater,
+                    (None, None) => Equal
+                }
+            });
+        match min_hit_opt_opt {
+            Some(hit_record_opt) => hit_record_opt,
+            None => None
+        }
+    }
+}
+
+struct Sphere {
+    center: Vec3,
+    radius: f64
+}
+
+impl Sphere {
+    fn new(center: Vec3, radius: f64) -> Sphere {
+        Sphere {
+            center,
+            radius
+        }
+    }
+}
+
+impl Hittable for Sphere {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let oc = (*ray).origin - self.center;
+        let a = (*ray).dir.length_squared();
+        let half_b = dot(oc, (*ray).dir);
+        let c = oc.length_squared() - self.radius * self.radius;
+        let discriminant = half_b * half_b - a * c;
+
+        if discriminant > 0.0 {
+            let root = discriminant.sqrt();
+            for temp in [(-half_b - root) / a, (-half_b + root) / a].iter() {
+                let t = *temp;
+                if t < t_max && t > t_min {
+                    let point = ray.at(t);
+                    let outward_normal = (point - self.center) / self.radius;
+                    let (normal, front_face) =
+                        face_normal_adjustment(ray.dir, outward_normal);
+                    return Some(HitRecord::new(point, normal, t, front_face));
+                }
+            }
+        }
+        None
+    }
+}
 
 fn to_color(pixel_color: Vec3) -> image::Rgb<u8> {
     let r = (255.999 * pixel_color.x()).floor() as u8;
@@ -161,27 +269,14 @@ fn to_color(pixel_color: Vec3) -> image::Rgb<u8> {
     image::Rgb([r, g, b])
 }
 
-fn hit_sphere(center: Vec3, radius: f64, ray: &Ray) -> f64 {
-    let oc = (*ray).orig - center;
-    let a = (*ray).dir.length_squared();
-    let half_b = dot(oc, (*ray).dir);
-    let c = oc.length_squared() - radius * radius;
-    let discriminant = half_b * half_b - a * c;
-
-    if discriminant < 0.0 { -1.0 }
-    else { (-half_b - discriminant.sqrt()) / (a) }
-}
-
-fn ray_color(ray: Ray) -> image::Rgb<u8> {
-    let t = hit_sphere(-Vec3::z_axis(), 0.5, &ray);
-    if  t > 0.0 {
-        let n = (ray.at(t) - (-Vec3::z_axis())).unit_vector();
-        to_color(0.5 * (Vec3::new(n.x(), n.y(), n.z()) + Vec3::one()))
+fn ray_color(ray: Ray, hittable: &Box<dyn Hittable>) -> image::Rgb<u8> {
+    if let Some(hit_record) = (*hittable).hit(&ray, 0.0, f64::INFINITY) {
+        to_color(0.5 * (hit_record.normal + Vec3::one()))
     }
     else {
-        let unit_direction = ray.dir.unit_vector();
-        let t2 = 0.5 * (unit_direction.y() + 1.0);
-        to_color((1.0 - t2) * Vec3::one() + t2 * Vec3::new(0.5, 0.7, 1.0))
+        let unit_ray_dir = ray.dir.unit_vector();
+        let t = 0.5 * (unit_ray_dir.y() + 1.0);
+        to_color((1.0 - t) * Vec3::one() + t * Vec3::new(0.5, 0.7, 1.0))
     }
 }
 
@@ -203,6 +298,13 @@ fn main() -> std::io::Result<()> {
     let lower_left_corner = origin - horizontal / 2.0 - vertical / 2.0
         - focal_length * Vec3::z_axis();
 
+    let world: Box<dyn Hittable> = Box::new(HittableList {
+        hittables: vec![
+            Box::new(Sphere::new(-Vec3::z_axis(), 0.5)),
+            Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0))
+        ]
+    });
+
     let mut imgbuf = image::ImageBuffer::new(image_width, image_height);
 
     println!("Starting to render image.");
@@ -217,12 +319,12 @@ fn main() -> std::io::Result<()> {
         let ray = Ray::new(origin, lower_left_corner +
             u * horizontal + v * vertical - origin);
 
-        *pixel = ray_color(ray);
+        *pixel = ray_color(ray, &world);
     }
 
     println!("Finished rendering image.");
 
-    imgbuf.save("./output/first_raytrace.png").unwrap();
+    imgbuf.save("./output/hittable_list.png").unwrap();
 
     println!("Finished saving image.");
 
