@@ -4,6 +4,7 @@ use std::ops::{Neg, Add, Sub, Mul, Div};
 use std::cmp::Ordering::{Equal, Less, Greater};
 use rand::Rng;
 use rand::seq::index::sample;
+use rand::prelude::ThreadRng;
 
 
 #[derive(Debug, Copy, Clone)]
@@ -59,6 +60,18 @@ impl Vec3 {
 
     fn unit_vector(&self) -> Vec3 {
         *self / self.length()
+    }
+
+    fn random(rng_source: &mut ThreadRng) -> Vec3 {
+        Vec3::new((*rng_source).gen_range(0.0, 1.0),
+                  (*rng_source).gen_range(0.0, 1.0),
+                  (*rng_source).gen_range(0.0, 1.0))
+    }
+
+    fn random_range(rng_source: &mut ThreadRng, min: f64, max: f64) -> Vec3 {
+        Vec3::new((*rng_source).gen_range(min, max),
+                  (*rng_source).gen_range(min, max),
+                  (*rng_source).gen_range(min, max))
     }
 
     fn to_string(&self) -> String {
@@ -136,6 +149,18 @@ impl Div<f64> for Vec3 {
 
 fn dot(v1: Vec3, v2: Vec3) -> f64 {
     v1.e[0] * v2.e[0] + v1.e[1] * v2.e[1] + v1.e[2] * v2.e[2]
+}
+
+fn random_vec_in_unit_sphere(rng_source: &mut ThreadRng) -> Vec3 {
+    let mut random_vec: Vec3 = Vec3::zero();
+
+    loop {
+        random_vec = Vec3::random_range(rng_source, -1.0, 1.0);
+        if random_vec.length_squared() <= 1.0 {
+            break;
+        }
+    }
+    random_vec
 }
 
 struct Camera {
@@ -315,14 +340,22 @@ fn clamp(x: f64, min: f64, max: f64) -> f64 {
     if x < min {min} else if x > max {max} else {x}
 }
 
-fn ray_color(ray: Ray, hittable: &Box<dyn Hittable>) -> Vec3 {
-    if let Some(hit_record) = (*hittable).hit(&ray, 0.0, f64::INFINITY) {
-        0.5 * (hit_record.normal + Vec3::one())
+fn ray_color(rng_source: &mut ThreadRng, ray: Ray, hittable: &Box<dyn Hittable>, depth: i32) -> Vec3 {
+    if depth <= 0 {
+        Vec3::zero()
     }
     else {
-        let unit_ray_dir = ray.dir.unit_vector();
-        let t = 0.5 * (unit_ray_dir.y() + 1.0);
-        (1.0 - t) * Vec3::one() + t * Vec3::new(0.5, 0.7, 1.0)
+        if let Some(hit_record) = (*hittable).hit(&ray, 0.0, f64::INFINITY) {
+            let target = hit_record.point + hit_record.normal + random_vec_in_unit_sphere(rng_source);
+            //0.5 * (hit_record.normal + Vec3::one())
+            0.5 * ray_color(rng_source,
+                            Ray::new(hit_record.point, target - hit_record.point),
+                            hittable, depth - 1)
+        } else {
+            let unit_ray_dir = ray.dir.unit_vector();
+            let t = 0.5 * (unit_ray_dir.y() + 1.0);
+            (1.0 - t) * Vec3::one() + t * Vec3::new(0.5, 0.7, 1.0)
+        }
     }
 }
 
@@ -335,9 +368,10 @@ fn main() -> std::io::Result<()> {
     let aspect_ratio = 16.0 / 9.0;
 
     let print_every_n_rows: u32 = 20;
-    let image_width: u32 = 3840;
+    let image_width: u32 = 200;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
+    let max_depth = 50;
 
     println!("Image width: {}, Image Height: {}, Samples Per Pixel: {}, Status print every {} rows",
              image_width, image_height, samples_per_pixel, print_every_n_rows);
@@ -366,7 +400,7 @@ fn main() -> std::io::Result<()> {
             let u = (i + rng.gen_range(0.0, 1.0)) / (image_width - 1) as f64;
             let v = (j + rng.gen_range(0.0, 1.0)) / (image_height - 1) as f64;
             let ray = cam.get_ray(u, v);
-            ray_color(ray, &world)
+            ray_color(&mut rng, ray, &world, max_depth)
         }).fold(Vec3::zero(), |x, y| x + y);
 
         *pixel = to_color(pixel_color, samples_per_pixel);
@@ -374,7 +408,7 @@ fn main() -> std::io::Result<()> {
 
     println!("Finished rendering image.");
 
-    imgbuf.save("./output/lorgest_sphere_sphere.png").unwrap();
+    imgbuf.save("./output/diffuse_first.png").unwrap();
 
     println!("Finished saving image.");
 
