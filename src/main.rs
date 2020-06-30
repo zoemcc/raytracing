@@ -239,7 +239,7 @@ impl HittableList {
 
 impl Hittable for HittableList {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let min_hit_opt_opt = self.hittables.iter()
+        if let Some(min_hit_opt) = self.hittables.iter()
             .map(|x| x.hit(ray, t_min, t_max))
             .min_by(|x, y| {
                 match (x, y) {
@@ -250,11 +250,8 @@ impl Hittable for HittableList {
                     (None, Some(_)) => Greater,
                     (None, None) => Equal
                 }
-            });
-        match min_hit_opt_opt {
-            Some(hit_record_opt) => hit_record_opt,
-            None => None
-        }
+            })
+        { min_hit_opt } else { None }
     }
 }
 
@@ -334,15 +331,16 @@ fn main() -> std::io::Result<()> {
     println!("Configuring viewport and image buffer.");
 
     let mut rng = rand::thread_rng();
-    println!("Float: {}", rng.gen_range(0.0, 1.0));
 
     let aspect_ratio = 16.0 / 9.0;
-    let image_width: u32 = 384;
+
+    let print_every_n_rows: u32 = 20;
+    let image_width: u32 = 3840;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
 
-    println!("Image width: {}, Image Height: {}, Samples Per Pixel: {}",
-             image_width, image_height, samples_per_pixel);
+    println!("Image width: {}, Image Height: {}, Samples Per Pixel: {}, Status print every {} rows",
+             image_width, image_height, samples_per_pixel, print_every_n_rows);
 
     let world: Box<dyn Hittable> = Box::new(HittableList {
         hittables: vec![
@@ -357,7 +355,10 @@ fn main() -> std::io::Result<()> {
 
     println!("Starting to render image.");
 
-    for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
+    for (index, (x, y, pixel)) in imgbuf.enumerate_pixels_mut().enumerate() {
+        if index as u32 % (print_every_n_rows * image_width) == 0 {
+            println!("Pixel (x, y): ({}, {}), Rows remaining: {}", x, y, image_height - y);
+        }
         let i = x as f64;
         let j = ((image_height - 1) - y) as f64;
 
@@ -373,7 +374,7 @@ fn main() -> std::io::Result<()> {
 
     println!("Finished rendering image.");
 
-    imgbuf.save("./output/anti_aliasing_100.png").unwrap();
+    imgbuf.save("./output/lorgest_sphere_sphere.png").unwrap();
 
     println!("Finished saving image.");
 
