@@ -58,6 +58,10 @@ impl Vec3 {
         dot(*self, *self)
     }
 
+    fn sqrt(&self) -> Vec3 {
+        Vec3::new(self.e[0].sqrt(), self.e[1].sqrt(), self.e[2].sqrt())
+    }
+
     fn unit_vector(&self) -> Vec3 {
         *self / self.length()
     }
@@ -161,6 +165,15 @@ fn random_vec_in_unit_sphere(rng_source: &mut ThreadRng) -> Vec3 {
         }
     }
     random_vec
+}
+
+fn random_unit_vector(rng_source: &mut ThreadRng) -> Vec3 {
+    let tau: f64 = 6.28318530717958647692528676655900577f64;
+    let angle: f64 = rng_source.gen_range(0.0, tau);
+    let height: f64 = rng_source.gen_range(-1.0, 1.0);
+    let radius: f64 = (1.0 - height * height).sqrt();
+
+    Vec3::new(radius * angle.cos(), radius * angle.sin(), height)
 }
 
 struct Camera {
@@ -320,18 +333,11 @@ impl Hittable for Sphere {
 }
 
 fn to_color(pixel_color: Vec3, samples_per_pixel: i32) -> image::Rgb<u8> {
-    let scaled_pixel_color = pixel_color / (samples_per_pixel as f64);
-    let r = (256.0 * clamp(scaled_pixel_color.x(), 0.0, 0.999)).floor() as u8;
-    let g = (256.0 * clamp(scaled_pixel_color.y(), 0.0, 0.999)).floor() as u8;
-    let b = (256.0 * clamp(scaled_pixel_color.z(), 0.0, 0.999)).floor() as u8;
+    let pixel_color_scaled_gamma_corrected = (pixel_color / (samples_per_pixel as f64)).sqrt();
 
-    image::Rgb([r, g, b])
-}
-
-fn to_color_single(pixel_color: Vec3) -> image::Rgb<u8> {
-    let r = (255.999 * pixel_color.x()).floor() as u8;
-    let g = (255.999 * pixel_color.y()).floor() as u8;
-    let b = (255.999 * pixel_color.z()).floor() as u8;
+    let r = (256.0 * clamp(pixel_color_scaled_gamma_corrected.x(), 0.0, 0.999)).floor() as u8;
+    let g = (256.0 * clamp(pixel_color_scaled_gamma_corrected.y(), 0.0, 0.999)).floor() as u8;
+    let b = (256.0 * clamp(pixel_color_scaled_gamma_corrected.z(), 0.0, 0.999)).floor() as u8;
 
     image::Rgb([r, g, b])
 }
@@ -345,8 +351,8 @@ fn ray_color(rng_source: &mut ThreadRng, ray: Ray, hittable: &Box<dyn Hittable>,
         Vec3::zero()
     }
     else {
-        if let Some(hit_record) = (*hittable).hit(&ray, 0.0, f64::INFINITY) {
-            let target = hit_record.point + hit_record.normal + random_vec_in_unit_sphere(rng_source);
+        if let Some(hit_record) = (*hittable).hit(&ray, 0.001, f64::INFINITY) {
+            let target = hit_record.point + hit_record.normal + random_unit_vector(rng_source);
             //0.5 * (hit_record.normal + Vec3::one())
             0.5 * ray_color(rng_source,
                             Ray::new(hit_record.point, target - hit_record.point),
@@ -368,7 +374,7 @@ fn main() -> std::io::Result<()> {
     let aspect_ratio = 16.0 / 9.0;
 
     let print_every_n_rows: u32 = 20;
-    let image_width: u32 = 200;
+    let image_width: u32 = 500;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
     let max_depth = 50;
@@ -408,7 +414,7 @@ fn main() -> std::io::Result<()> {
 
     println!("Finished rendering image.");
 
-    imgbuf.save("./output/diffuse_first.png").unwrap();
+    imgbuf.save("./output/diffuse_correct_lambertian.png").unwrap();
 
     println!("Finished saving image.");
 
