@@ -316,20 +316,22 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, rng_source: &mut ThreadRng, ray: &Ray, hit_record: HitRecord) -> Option<(Ray, Vec3)> {
+    fn scatter(&self, rng_source: &mut ThreadRng, _: &Ray, hit_record: HitRecord) -> Option<(Ray, Vec3)> {
         let scatter_direction: Vec3 = hit_record.normal + random_unit_vector(rng_source);
         Some((Ray::new(hit_record.point, scatter_direction), self.albedo))
     }
 }
 
 struct Metal {
-    albedo: Vec3
+    albedo: Vec3,
+    fuzz: f64
 }
 
 impl Metal {
-    fn new(albedo: Vec3) -> Metal {
+    fn new(albedo: Vec3, fuzz: f64) -> Metal {
         Metal {
-            albedo
+            albedo,
+            fuzz: if fuzz < 1.0 {fuzz} else {1.0}
         }
     }
 }
@@ -337,8 +339,9 @@ impl Metal {
 impl Material for Metal {
     fn scatter(&self, rng_source: &mut ThreadRng, ray: &Ray, hit_record: HitRecord) -> Option<(Ray, Vec3)> {
         let reflected = reflect(ray.dir.unit_vector(), hit_record.normal);
-        if dot(reflected, hit_record.normal) > 0.0 {
-            Some((Ray::new(hit_record.point, reflected), self.albedo))
+        let scattered = Ray::new(hit_record.point, reflected + self.fuzz * random_vec_in_unit_sphere(rng_source));
+        if dot(scattered.dir, hit_record.normal) > 0.0 {
+            Some((scattered, self.albedo))
         }
         else {
             None
@@ -431,7 +434,7 @@ fn main() -> std::io::Result<()> {
     let aspect_ratio = 16.0 / 9.0;
 
     let print_every_n_rows: u32 = 20;
-    let image_width: u32 = 1000;
+    let image_width: u32 = 500;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
     let max_depth = 50;
@@ -446,9 +449,9 @@ fn main() -> std::io::Result<()> {
             Box::new(Sphere::new(-Vec3::z_axis(), 0.5,
                                  Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
             Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5,
-                                 Box::new(Metal::new(Vec3::new(0.8, 0.6, 0.2))))),
+                                 Box::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.7)))),
             Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5,
-                                 Box::new(Metal::new(Vec3::new(0.8, 0.8, 0.8)))))
+                                 Box::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.2))))
         ]
     });
 
@@ -477,7 +480,7 @@ fn main() -> std::io::Result<()> {
 
     println!("Finished rendering image.");
 
-    imgbuf.save("./output/materials_first.png").unwrap();
+    imgbuf.save("./output/materials_fuzzed.png").unwrap();
 
     println!("Finished saving image.");
 
