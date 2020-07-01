@@ -155,6 +155,10 @@ fn dot(v1: Vec3, v2: Vec3) -> f64 {
     v1.e[0] * v2.e[0] + v1.e[1] * v2.e[1] + v1.e[2] * v2.e[2]
 }
 
+fn reflect(vec: Vec3, normal: Vec3) -> Vec3 {
+    vec - 2.0 * dot(vec, normal) * normal
+}
+
 fn random_vec_in_unit_sphere(rng_source: &mut ThreadRng) -> Vec3 {
     let mut random_vec: Vec3 = Vec3::zero();
 
@@ -227,18 +231,20 @@ impl Ray {
     }
 }
 
-struct HitRecord {
+struct HitRecord<'a> {
     point: Vec3,
     normal: Vec3,
+    material: &'a Box<dyn Material>,
     t: f64,
     front_face: bool
 }
 
-impl HitRecord {
-    fn new(point: Vec3, normal: Vec3, t: f64, front_face: bool) -> HitRecord {
+impl<'a> HitRecord<'a> {
+    fn new(point: Vec3, normal: Vec3, material: &'a Box<dyn Material>, t: f64, front_face: bool) -> HitRecord {
         HitRecord {
             point,
             normal,
+            material,
             t,
             front_face
         }
@@ -293,16 +299,65 @@ impl Hittable for HittableList {
     }
 }
 
+trait Material {
+    fn scatter(&self, rng_source: &mut ThreadRng, ray: &Ray, hit_record: HitRecord) -> Option<(Ray, Vec3)>;
+}
+
+struct Lambertian {
+    albedo: Vec3
+}
+
+impl Lambertian {
+    fn new(albedo: Vec3) -> Lambertian {
+        Lambertian {
+            albedo
+        }
+    }
+}
+
+impl Material for Lambertian {
+    fn scatter(&self, rng_source: &mut ThreadRng, ray: &Ray, hit_record: HitRecord) -> Option<(Ray, Vec3)> {
+        let scatter_direction: Vec3 = hit_record.normal + random_unit_vector(rng_source);
+        Some((Ray::new(hit_record.point, scatter_direction), self.albedo))
+    }
+}
+
+struct Metal {
+    albedo: Vec3
+}
+
+impl Metal {
+    fn new(albedo: Vec3) -> Metal {
+        Metal {
+            albedo
+        }
+    }
+}
+
+impl Material for Metal {
+    fn scatter(&self, rng_source: &mut ThreadRng, ray: &Ray, hit_record: HitRecord) -> Option<(Ray, Vec3)> {
+        let reflected = reflect(ray.dir.unit_vector(), hit_record.normal);
+        if dot(reflected, hit_record.normal) > 0.0 {
+            Some((Ray::new(hit_record.point, reflected), self.albedo))
+        }
+        else {
+            None
+        }
+    }
+}
+
 struct Sphere {
     center: Vec3,
-    radius: f64
+    radius: f64,
+    material: Box<dyn Material>
 }
 
 impl Sphere {
-    fn new(center: Vec3, radius: f64) -> Sphere {
+    fn new(center: Vec3, radius: f64, material: Box<dyn Material>) -> Sphere {
         Sphere {
             center,
-            radius
+            radius,
+            material
         }
     }
 }
@@ -324,7 +379,7 @@ impl Hittable for Sphere {
                     let outward_normal = (point - self.center) / self.radius;
                     let (normal, front_face) =
                         face_normal_adjustment(ray.dir, outward_normal);
-                    return Some(HitRecord::new(point, normal, t, front_face));
+                    return Some(HitRecord::new(point, normal, &self.material, t, front_face));
                 }
             }
         }
@@ -352,11 +407,13 @@ fn ray_color(rng_source: &mut ThreadRng, ray: Ray, hittable: &Box<dyn Hittable>,
     }
     else {
         if let Some(hit_record) = (*hittable).hit(&ray, 0.001, f64::INFINITY) {
-            let target = hit_record.point + hit_record.normal + random_unit_vector(rng_source);
-            //0.5 * (hit_record.normal + Vec3::one())
-            0.5 * ray_color(rng_source,
-                            Ray::new(hit_record.point, target - hit_record.point),
-                            hittable, depth - 1)
+            if let Some((scattered, attenuation)) =
+                (*hit_record.material).scatter(rng_source, &ray, hit_record) {
+                attenuation * ray_color(rng_source, scattered, hittable, depth - 1)
+            }
+            else {
+                Vec3::zero()
+            }
         } else {
             let unit_ray_dir = ray.dir.unit_vector();
             let t = 0.5 * (unit_ray_dir.y() + 1.0);
@@ -374,7 +431,7 @@ fn main() -> std::io::Result<()> {
     let aspect_ratio = 16.0 / 9.0;
 
     let print_every_n_rows: u32 = 20;
-    let image_width: u32 = 500;
+    let image_width: u32 = 1000;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
     let max_depth = 50;
@@ -384,8 +441,14 @@ fn main() -> std::io::Result<()> {
 
     let world: Box<dyn Hittable> = Box::new(HittableList {
         hittables: vec![
-            Box::new(Sphere::new(-Vec3::z_axis(), 0.5)),
-            Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0))
+            Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0,
+                                 Box::new(Lambertian::new(Vec3::new(0.1, 0.8, 0.4))))),
+            Box::new(Sphere::new(-Vec3::z_axis(), 0.5,
+                                 Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
+            Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5,
+                                 Box::new(Metal::new(Vec3::new(0.8, 0.6, 0.2))))),
+            Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5,
+                                 Box::new(Metal::new(Vec3::new(0.8, 0.8, 0.8)))))
         ]
     });
 
@@ -414,7 +477,7 @@ fn main() -> std::io::Result<()> {
 
     println!("Finished rendering image.");
 
-    imgbuf.save("./output/diffuse_correct_lambertian.png").unwrap();
+    imgbuf.save("./output/materials_first.png").unwrap();
 
     println!("Finished saving image.");
 
