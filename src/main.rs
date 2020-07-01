@@ -3,8 +3,9 @@ extern crate image;
 use std::ops::{Neg, Add, Sub, Mul, Div};
 use std::cmp::Ordering::{Equal, Less, Greater};
 use rand::Rng;
-use rand::seq::index::sample;
 use rand::prelude::ThreadRng;
+use rayon::prelude::*;
+use image::RgbImage;
 
 
 #[derive(Debug, Copy, Clone)]
@@ -429,12 +430,11 @@ fn ray_color(rng_source: &mut ThreadRng, ray: Ray, hittable: &Box<dyn Hittable>,
 fn main() -> std::io::Result<()> {
     println!("Configuring viewport and image buffer.");
 
-    let mut rng = rand::thread_rng();
 
     let aspect_ratio = 16.0 / 9.0;
 
     let print_every_n_rows: u32 = 20;
-    let image_width: u32 = 500;
+    let image_width: u32 = 1000;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
     let max_depth = 50;
@@ -442,29 +442,30 @@ fn main() -> std::io::Result<()> {
     println!("Image width: {}, Image Height: {}, Samples Per Pixel: {}, Status print every {} rows",
              image_width, image_height, samples_per_pixel, print_every_n_rows);
 
-    let world: Box<dyn Hittable> = Box::new(HittableList {
-        hittables: vec![
-            Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0,
-                                 Box::new(Lambertian::new(Vec3::new(0.1, 0.8, 0.4))))),
-            Box::new(Sphere::new(-Vec3::z_axis(), 0.5,
-                                 Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
-            Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5,
-                                 Box::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.7)))),
-            Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5,
-                                 Box::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.2))))
-        ]
-    });
 
     let cam: Camera = Camera::new();
 
-    let mut imgbuf = image::ImageBuffer::new(image_width, image_height);
+    //let mut imgbuf = image::ImageBuffer::new(image_width, image_height);
 
     println!("Starting to render image.");
 
-    for (index, (x, y, pixel)) in imgbuf.enumerate_pixels_mut().enumerate() {
-        if index as u32 % (print_every_n_rows * image_width) == 0 {
-            println!("Pixel (x, y): ({}, {}), Rows remaining: {}", x, y, image_height - y);
-        }
+    let result_vec: Vec<(u32, u32, Vec3)> = (0..image_width * image_height).into_par_iter().map(|index| {
+        let mut rng = rand::thread_rng();
+        let world: Box<dyn Hittable> = Box::new(HittableList {
+            hittables: vec![
+                Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0,
+                                     Box::new(Lambertian::new(Vec3::new(0.1, 0.8, 0.4))))),
+                Box::new(Sphere::new(-Vec3::z_axis(), 0.5,
+                                     Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
+                Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5,
+                                     Box::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.7)))),
+                Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5,
+                                     Box::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.2))))
+            ]
+        });
+
+        let x = index as u32 % image_width;
+        let y = (index as u32 - x) / image_width;
         let i = x as f64;
         let j = ((image_height - 1) - y) as f64;
 
@@ -474,13 +475,17 @@ fn main() -> std::io::Result<()> {
             let ray = cam.get_ray(u, v);
             ray_color(&mut rng, ray, &world, max_depth)
         }).fold(Vec3::zero(), |x, y| x + y);
-
-        *pixel = to_color(pixel_color, samples_per_pixel);
-    }
+        (x, y, pixel_color)
+    }).collect();
 
     println!("Finished rendering image.");
 
-    imgbuf.save("./output/materials_fuzzed.png").unwrap();
+    let mut img = RgbImage::new(image_width, image_height);
+    for (x, y, pixel_color) in result_vec {
+        img.put_pixel(x, y, to_color(pixel_color, samples_per_pixel));
+    }
+
+    img.save("./output/materials_fuzzed_par.png").unwrap();
 
     println!("Finished saving image.");
 
