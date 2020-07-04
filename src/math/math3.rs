@@ -176,3 +176,26 @@ pub fn random_unit_vector(rng_source: &mut ThreadRng) -> Vec3 {
     Vec3::new(radius * angle.cos(), radius * angle.sin(), height)
 }
 
+/* old verification stuff
+let x_vec = Vec3::new(1.0, 0.5, 0.25);
+x_vec.print_string();
+let y_vec = Vec3::new(-1.0, 0.75, -0.75);
+y_vec.print_string();
+let neg_x_vec = -x_vec;
+neg_x_vec.print_string();
+let z_vec = x_vec + y_vec;
+z_vec.print_string();
+let w_vec = x_vec * y_vec;
+w_vec.print_string();
+let x_scal_vec = x_vec * (0.5 as f64);
+x_scal_vec.print_string();
+let scal_x_vec = (0.5 as f64) * x_vec ;
+scal_x_vec.print_string();
+let sub_vec = x_vec - y_vec;
+sub_vec.print_string();
+let x_div = x_vec / (0.5 as f64);
+x_div.print_string();
+let x_unit = x_vec.unit_vector();
+x_unit.print_string();
+println!("{}", x_unit.length());
+*/

@@ -13,6 +13,10 @@ pub use crate::math::imaging::{Camera, to_color, ray_color};
 pub use crate::math::materials::{Material, Metal, Lambertian};
 pub use crate::math::hittables::{Sphere};
 
+mod scenes;
+pub use crate::scenes::spherion::{spherion_scene};
+pub use crate::scenes::three_spheres::{three_spheres_scene};
+
 
 fn main() -> std::io::Result<()> {
     println!("Configuring viewport and image buffer.");
@@ -39,43 +43,8 @@ fn main() -> std::io::Result<()> {
     let now_render = SystemTime::now();
     let result_vec: Vec<(u32, u32, Vec3)> = (0..image_width * image_height).into_par_iter().map(|index| {
         let mut rng = rand::thread_rng();
-        /*
-        let world: Box<dyn Hittable> = Box::new(HittableList {
-            hittables: vec![
-                Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0,
-                                     Box::new(Lambertian::new(Vec3::new(0.1, 0.8, 0.4))))),
-                Box::new(Sphere::new(-Vec3::z_axis(), 0.5,
-                                     Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
-                Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5,
-                                     Box::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.7)))),
-                Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5,
-                                     Box::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.2))))
-            ]
-        });
-         */
-        let world: Box<dyn Hittable> = Box::new(HittableList {
-            hittables: vec![
-                Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0,
-                                     Box::new(Lambertian::new(Vec3::new(0.1, 0.8, 0.4))))),
-                Box::new(Sphere::new(Vec3::new(0.0, -0.1, -1.0), 0.4,
-                                     Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
-                Box::new(Sphere::new(Vec3::new(0.5, 0.15, -1.0), 0.2,
-                                     Box::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.05)))),
-                Box::new(Sphere::new(Vec3::new(-0.5, 0.15, -1.0), 0.2,
-                                     Box::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.05)))),
-                Box::new(Sphere::new(Vec3::new(0.125, 0.05, -0.75), 0.15,
-                                     Box::new(Metal::new(Vec3::new(0.5, 0.9, 0.5), 0.01)))),
-                Box::new(Sphere::new(Vec3::new(-0.125, 0.05, -0.75), 0.15,
-                                     Box::new(Metal::new(Vec3::new(0.5, 0.9, 0.5), 0.01)))),
-                Box::new(Sphere::new(Vec3::new(0.0, -0.05, -0.7), 0.1,
-                                     Box::new(Lambertian::new(Vec3::new(0.8, 0.2, 0.2))))),
-                Box::new(Sphere::new(Vec3::new(0.0, 0.45, 0.75), 0.5,
-                                     Box::new(Metal::new(Vec3::new(0.2, 0.2, 0.2), 0.01)))),
-                Box::new(Sphere::new(Vec3::new(0.0, 0.45, 0.335), 0.175,
-                                     Box::new(Lambertian::new(Vec3::new(0.95, 0.95, 0.95))))),
-            ]
-        });
 
+        let world = spherion_scene();
 
         let x = index as u32 % image_width;
         let y = (index as u32 - x) / image_width;
@@ -145,26 +114,3 @@ match imgres {
  */
 
 
-/* TODO: old testing stuff, move this to vec trait testing
-let x_vec = Vec3::new(1.0, 0.5, 0.25);
-x_vec.print_string();
-let y_vec = Vec3::new(-1.0, 0.75, -0.75);
-y_vec.print_string();
-let neg_x_vec = -x_vec;
-neg_x_vec.print_string();
-let z_vec = x_vec + y_vec;
-z_vec.print_string();
-let w_vec = x_vec * y_vec;
-w_vec.print_string();
-let x_scal_vec = x_vec * (0.5 as f64);
-x_scal_vec.print_string();
-let scal_x_vec = (0.5 as f64) * x_vec ;
-scal_x_vec.print_string();
-let sub_vec = x_vec - y_vec;
-sub_vec.print_string();
-let x_div = x_vec / (0.5 as f64);
-x_div.print_string();
-let x_unit = x_vec.unit_vector();
-x_unit.print_string();
-println!("{}", x_unit.length());
-*/
