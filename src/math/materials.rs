@@ -27,6 +27,24 @@ impl Material for Lambertian {
     }
 }
 
+pub struct AbsorbRay {
+    albedo: Vec3
+}
+
+impl AbsorbRay {
+    pub fn new(albedo: Vec3) -> AbsorbRay {
+        AbsorbRay {
+            albedo
+        }
+    }
+}
+
+impl Material for AbsorbRay {
+    fn scatter(&self, rng_source: &mut ThreadRng, _: &Ray, hit_record: HitRecord) -> Option<(Ray, Vec3)> {
+        None
+    }
+}
+
 pub struct Metal {
     albedo: Vec3,
     fuzz: f64

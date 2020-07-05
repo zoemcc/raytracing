@@ -1,7 +1,87 @@
+use std::cmp::Ordering::{Equal, Less, Greater};
 use crate::math::math3::{Vec3, dot};
 use crate::math::materials::{Material};
 use crate::math::raytracing::{Ray, HitRecord, Hittable, face_normal_adjustment};
+use crate::math::signed_distance::{SignedDistance};
 
+
+pub struct HittableList {
+    pub hittables: Vec<Box<dyn Hittable>>
+}
+
+impl HittableList {
+    pub fn new() -> HittableList {
+        HittableList {
+            hittables: Vec::new()
+        }
+    }
+
+    pub fn add(&mut self, to_add: Box<dyn Hittable>) -> () {
+        self.hittables.push(to_add);
+    }
+
+    pub fn clear(&mut self) -> () {
+        self.hittables.clear();
+    }
+}
+
+impl Hittable for HittableList {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        if let Some(min_hit_opt) = self.hittables.iter()
+            .map(|x| x.hit(ray, t_min, t_max))
+            .min_by(|x, y| {
+                match (x, y) {
+                    (Some(x_hit_record), Some(y_hit_record)) => {
+                        if x_hit_record.t < y_hit_record.t {Less} else {Greater}
+                    },
+                    (Some(_), None) => Less,
+                    (None, Some(_)) => Greater,
+                    (None, None) => Equal
+                }
+            })
+        { min_hit_opt } else { None }
+    }
+}
+
+pub struct Raymarcher {
+    distance_field: Box<dyn SignedDistance>,
+    max_march_steps: usize,
+    min_distance: f64,
+    material: Box<dyn Material>,
+}
+
+impl Raymarcher {
+    pub fn new(distance_field: Box<dyn SignedDistance>, max_march_steps: usize,
+               min_distance: f64, material: Box<dyn Material>) -> Raymarcher {
+        Raymarcher {
+            distance_field,
+            max_march_steps,
+            min_distance,
+            material
+        }
+    }
+}
+
+impl Hittable for Raymarcher {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let mut t_cur = t_min;
+        for step in 0..self.max_march_steps {
+            let cur_point = ray.at(t_cur);
+            let cur_distance = self.distance_field.distance_estimate(cur_point);
+            if cur_distance < self.min_distance {
+                let normal: Vec3 = self.distance_field.normal_estimate(cur_point);
+                //let normal: Vec3 = -ray.dir;
+                return Some(HitRecord::new(cur_point, normal, &self.material, t_cur, true))
+            }
+            else {
+                t_cur += cur_distance;
+                if t_cur > t_max {return None}
+            }
+        }
+
+        None
+    }
+}
 
 pub struct Sphere {
     center: Vec3,
@@ -43,4 +123,5 @@ impl Hittable for Sphere {
         None
     }
 }
+
 

@@ -1,6 +1,6 @@
 use crate::math::math3::{Vec3};
-use crate::math::raytracing::{Hittable, HittableList};
-use crate::math::hittables::{Sphere};
+use crate::math::raytracing::{Hittable};
+use crate::math::hittables::{Sphere, HittableList};
 use crate::math::materials::{Lambertian, Metal};
 
 

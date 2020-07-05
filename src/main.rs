@@ -8,7 +8,7 @@ use image::{RgbImage, ImageFormat};
 
 mod math;
 pub use crate::math::math3::{Vec3, dot, random_vec_in_unit_sphere, reflect, random_unit_vector};
-pub use crate::math::raytracing::{Ray, HitRecord, Hittable, HittableList};
+pub use crate::math::raytracing::{Ray, HitRecord, Hittable};
 pub use crate::math::imaging::{Camera, to_color, ray_color};
 pub use crate::math::materials::{Material, Metal, Lambertian};
 pub use crate::math::hittables::{Sphere};
@@ -16,6 +16,7 @@ pub use crate::math::hittables::{Sphere};
 mod scenes;
 pub use crate::scenes::spherion::{spherion_scene};
 pub use crate::scenes::three_spheres::{three_spheres_scene};
+pub use crate::scenes::first_fractal::{first_fractal_scene};
 
 
 fn main() -> std::io::Result<()> {
@@ -28,7 +29,7 @@ fn main() -> std::io::Result<()> {
     let image_width: u32 = 200;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
-    let max_depth = 50;
+    let max_depth = 2;
 
     println!("Image width: {}, Image Height: {}, Samples Per Pixel: {}, Status print every {} rows",
              image_width, image_height, samples_per_pixel, print_every_n_rows);
@@ -44,7 +45,7 @@ fn main() -> std::io::Result<()> {
     let result_vec: Vec<(u32, u32, Vec3)> = (0..image_width * image_height).into_par_iter().map(|index| {
         let mut rng = rand::thread_rng();
 
-        let world = spherion_scene();
+        let world = first_fractal_scene();
 
         let x = index as u32 % image_width;
         let y = (index as u32 - x) / image_width;
@@ -82,7 +83,7 @@ fn main() -> std::io::Result<()> {
         img.put_pixel(x, y, to_color(pixel_color, samples_per_pixel));
     }
 
-    img.save("./output/spherion_test.png").unwrap();
+    img.save("./output/signed_distance_first.png").unwrap();
 
     match now_save.elapsed() {
         Ok(elapsed) => {
