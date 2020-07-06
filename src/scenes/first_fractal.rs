@@ -15,11 +15,11 @@ pub fn first_fractal_scene() -> Box<dyn Hittable> {
                 SierpinskiTetrahedron::new(Vec3::new(0.0, 0.0, -1.5), 1)),
                                      10, 0.2, Box::new(AbsorbRay::new(Vec3::new(0.5, 0.4, 0.7))))),
              */
-            //Box::new(Raymarcher::new(Box::new(SphereSignedDistance::new(
-                //Vec3::new(0.0, -0.1, -1.0), 0.4
-            //)), 100, 0.0001, Box::new(AbsorbRay::new(Vec3::new(0.5, 0.4, 0.7))))),
-            Box::new(Sphere::new(Vec3::new(1.0, 1.0, -0.5), 0.3,
-                                 Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
+            Box::new(Raymarcher::new(Box::new(SphereSignedDistance::new(
+                Vec3::new(0.0, -0.1, -1.0), 0.4
+            )), 100, 0.005, Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
+            //Box::new(Sphere::new(Vec3::new(0.0, -0.1, -1.0), 0.4,
+                                 //Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
         ]
     })
 }

@@ -69,9 +69,11 @@ impl Hittable for Raymarcher {
             let cur_point = ray.at(t_cur);
             let cur_distance = self.distance_field.distance_estimate(cur_point);
             if cur_distance < self.min_distance {
-                let normal: Vec3 = self.distance_field.normal_estimate(cur_point);
+                let outward_normal: Vec3 = self.distance_field.normal_estimate(cur_point);
                 //let normal: Vec3 = -ray.dir;
-                return Some(HitRecord::new(cur_point, normal, &self.material, t_cur, true))
+                let (normal, front_face) =
+                    face_normal_adjustment(ray.dir, outward_normal);
+                return Some(HitRecord::new(cur_point, normal, &self.material, t_cur, front_face))
             }
             else {
                 t_cur += cur_distance;

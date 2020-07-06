@@ -10,7 +10,7 @@ impl Ray {
     pub fn new(origin: Vec3, direction: Vec3) -> Ray {
         Ray {
             origin,
-            dir: direction
+            dir: direction.unit_vector()
         }
     }
 
