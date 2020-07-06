@@ -1,8 +1,9 @@
 use rand::Rng;
 use rand::prelude::ThreadRng;
 
-use crate::math::math3::{Vec3};
+use crate::math::math3::{Vec3, cross};
 use crate::math::raytracing::{Ray, Hittable};
+use crate::math::utils::{degrees_to_radians};
 
 pub struct Camera {
     origin: Vec3,
@@ -12,22 +13,25 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new() -> Camera {
-        let aspect_ratio = 16.0 / 9.0;
-        let viewport_height = 2.0;
+    pub fn new(lookfrom: Vec3, lookat: Vec3, vup: Vec3, vfov: f64, aspect_ratio: f64) -> Camera {
+        let theta: f64 = degrees_to_radians(vfov);
+        let h: f64 = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h;
         let viewport_width = aspect_ratio * viewport_height;
-        let focal_length = 1.0;
 
-        let origin = Vec3::zero();
-        let horizontal = viewport_width * Vec3::x_axis();
-        let vertical = viewport_height * Vec3::y_axis();
+        let w = (lookfrom - lookat).unit_vector();
+        let u = cross(vup, w).unit_vector();
+        let v = cross(w, u);
+
+        let origin = lookfrom;
+        let horizontal = viewport_width * u;
+        let vertical = viewport_height * v;
 
         Camera {
             origin,
             horizontal,
             vertical,
-            lower_left_corner: origin - focal_length * Vec3::z_axis()
-                - horizontal / 2.0 - vertical / 2.0
+            lower_left_corner: origin - w - horizontal / 2.0 - vertical / 2.0
         }
     }
 

@@ -34,7 +34,12 @@ fn main() -> std::io::Result<()> {
              image_width, image_height, samples_per_pixel, print_every_n_rows);
 
 
-    let cam: Camera = Camera::new();
+    let vfov: f64 = 35.0;
+    let aspect_ratio: f64 = (image_width as f64) / (image_height as f64);
+    let lookat: Vec3 = Vec3::new(0.0, 0.0, 0.0);
+    let lookfrom: Vec3 = Vec3::new(-2.0, 2.0, 1.0);
+    let vup: Vec3 = Vec3::y_axis();
+    let cam: Camera = Camera::new(lookfrom, lookat, vup, vfov, aspect_ratio);
 
     //let mut imgbuf = image::ImageBuffer::new(image_width, image_height);
 
@@ -82,7 +87,7 @@ fn main() -> std::io::Result<()> {
         img.put_pixel(x, y, to_color(pixel_color, samples_per_pixel));
     }
 
-    img.save("./output/spherion_test.png").unwrap();
+    img.save("./output/spherion_eye_look_200.png").unwrap();
 
     match now_save.elapsed() {
         Ok(elapsed) => {
