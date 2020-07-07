@@ -6,11 +6,11 @@ use crate::math::raytracing::{Ray, HitRecord, Hittable, face_normal_adjustment};
 pub struct Sphere {
     center: Vec3,
     radius: f64,
-    material: Box<dyn Material>
+    material: Material
 }
 
 impl Sphere {
-    pub fn new(center: Vec3, radius: f64, material: Box<dyn Material>) -> Sphere {
+    pub fn new(center: Vec3, radius: f64, material: Material) -> Sphere {
         Sphere {
             center,
             radius,

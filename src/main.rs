@@ -10,7 +10,7 @@ mod math;
 pub use crate::math::math3::{Vec3, dot, random_vec_in_unit_sphere, reflect, random_unit_vector};
 pub use crate::math::raytracing::{Ray, HitRecord, Hittable, HittableList};
 pub use crate::math::imaging::{Camera, to_color, ray_color};
-pub use crate::math::materials::{Material, Metal, Lambertian};
+pub use crate::math::materials::{Material};
 pub use crate::math::hittables::{Sphere};
 
 mod scenes;
@@ -25,7 +25,7 @@ fn main() -> std::io::Result<()> {
     let aspect_ratio = 16.0 / 9.0;
 
     let print_every_n_rows: u32 = 20;
-    let image_width: u32 = 200;
+    let image_width: u32 = 1000;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
     let max_depth = 50;
@@ -87,7 +87,7 @@ fn main() -> std::io::Result<()> {
         img.put_pixel(x, y, to_color(pixel_color, samples_per_pixel));
     }
 
-    img.save("./output/spherion_eye_look_200.png").unwrap();
+    img.save("./output/spherion_eye_look_test.png").unwrap();
 
     match now_save.elapsed() {
         Ok(elapsed) => {

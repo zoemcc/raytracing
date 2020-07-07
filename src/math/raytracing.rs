@@ -24,13 +24,13 @@ impl Ray {
 pub struct HitRecord<'a> {
     pub point: Vec3,
     pub normal: Vec3,
-    pub material: &'a Box<dyn Material>,
+    pub material: &'a Material,
     t: f64,
     front_face: bool
 }
 
 impl<'a> HitRecord<'a> {
-    pub fn new(point: Vec3, normal: Vec3, material: &'a Box<dyn Material>, t: f64, front_face: bool) -> HitRecord {
+    pub fn new(point: Vec3, normal: Vec3, material: &Material, t: f64, front_face: bool) -> HitRecord {
         HitRecord {
             point,
             normal,
