@@ -8,10 +8,9 @@ use image::{RgbImage, ImageFormat};
 
 mod math;
 pub use crate::math::math3::{Vec3, dot, random_vec_in_unit_sphere, reflect, random_unit_vector};
-pub use crate::math::raytracing::{Ray, HitRecord, Hittable, HittableList};
+pub use crate::math::raytracing::{Ray, HitRecord, Hittable};
 pub use crate::math::imaging::{Camera, to_color, ray_color};
 pub use crate::math::materials::{Material};
-pub use crate::math::hittables::{Sphere};
 
 mod scenes;
 pub use crate::scenes::spherion::{spherion_scene};
@@ -45,11 +44,11 @@ fn main() -> std::io::Result<()> {
 
     println!("Starting to render image.");
 
+    let world = spherion_scene();
     let now_render = SystemTime::now();
     let result_vec: Vec<(u32, u32, Vec3)> = (0..image_width * image_height).into_par_iter().map(|index| {
         let mut rng = rand::thread_rng();
 
-        let world = spherion_scene();
 
         let x = index as u32 % image_width;
         let y = (index as u32 - x) / image_width;
