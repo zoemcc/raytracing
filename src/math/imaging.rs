@@ -56,7 +56,7 @@ fn clamp(x: f64, min: f64, max: f64) -> f64 {
     if x < min {min} else if x > max {max} else {x}
 }
 
-pub fn ray_color(rng_source: &mut ThreadRng, ray: Ray, hittable: &Box<dyn Hittable>, depth: i32) -> Vec3 {
+pub fn ray_color(rng_source: &mut ThreadRng, ray: Ray, hittable: &Hittable, depth: i32) -> Vec3 {
     if depth <= 0 {
         Vec3::zero()
     }
