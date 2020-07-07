@@ -1,5 +1,7 @@
 extern crate image;
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime};
 use rand::Rng;
 use rand::prelude::ThreadRng;
@@ -44,6 +46,8 @@ fn main() -> std::io::Result<()> {
 
     println!("Starting to render image.");
 
+    let thread_counter = Arc::new(AtomicUsize::new(0));
+
     let world = spherion_scene();
     let now_render = SystemTime::now();
     let result_vec: Vec<(u32, u32, Vec3)> = (0..image_width * image_height).into_par_iter().map(|index| {
@@ -55,9 +59,6 @@ fn main() -> std::io::Result<()> {
         let i = x as f64;
         let j = ((image_height - 1) - y) as f64;
 
-        if index as u32 % (print_every_n_rows * image_width) == 0 {
-            println!("Pixel (x, y): ({}, {}), Rows remaining: {}", x, y, image_height - y);
-        }
 
         let pixel_color: Vec3 = (0..samples_per_pixel).map(|_| {
             let u = (i + rng.gen_range(0.0, 1.0)) / (image_width - 1) as f64;
@@ -65,6 +66,11 @@ fn main() -> std::io::Result<()> {
             let ray = cam.get_ray(u, v);
             ray_color(&mut rng, ray, &world, max_depth)
         }).fold(Vec3::zero(), |x, y| x + y);
+        let count = thread_counter.fetch_add(1, Ordering::SeqCst);
+        if count as u32 % (print_every_n_rows * image_width) == 0 {
+            let rows_remaining = image_height - ((count as u32) / image_width);
+            println!("Rows remaining: {}, Percent left to go: {}", rows_remaining, 100.0 * rows_remaining as f64 / image_height as f64);
+        }
         (x, y, pixel_color)
     }).collect();
 
