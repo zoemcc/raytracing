@@ -32,7 +32,7 @@ impl SignedDistance for SierpinskiTetrahedron {
             if cur_vec.y() + cur_vec.z() < 0.0 {cur_vec = Vec3::new(cur_vec.x(), -cur_vec.z(), -cur_vec.y());}
             cur_vec = cur_vec * 2.0 - offset;
         }
-        let distance = cur_vec.length() * 2.0_f64.powi(-(self.num_fractal_iterations as i32));
+        let distance = (cur_vec.length() - 0.9) * 2.0_f64.powi(-(self.num_fractal_iterations as i32));
         //println!("final distance: {}", distance);
         distance
     }

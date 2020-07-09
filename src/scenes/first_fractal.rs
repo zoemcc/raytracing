@@ -10,16 +10,16 @@ pub fn first_fractal_scene() -> Box<dyn Hittable> {
         hittables: vec![
             Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0,
                                  Box::new(Lambertian::new(Vec3::new(0.1, 0.8, 0.4))))),
-            /*
             Box::new(Raymarcher::new(Box::new(
-                SierpinskiTetrahedron::new(Vec3::new(0.0, 0.0, -1.5), 1)),
-                                     10, 0.2, Box::new(AbsorbRay::new(Vec3::new(0.5, 0.4, 0.7))))),
+                SierpinskiTetrahedron::new(Vec3::new(0.0, 0.52, -2.6), 7)),
+                                     50, 0.000005, Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
+    /*
+    Box::new(Raymarcher::new(Box::new(SphereSignedDistance::new(
+        Vec3::new(0.0, -0.1, -1.0), 0.4
+    )), 100, 0.00005, Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
              */
-            Box::new(Raymarcher::new(Box::new(SphereSignedDistance::new(
-                Vec3::new(0.0, -0.1, -1.0), 0.4
-            )), 100, 0.005, Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
-            //Box::new(Sphere::new(Vec3::new(0.0, -0.1, -1.0), 0.4,
-                                 //Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
-        ]
-    })
+    //Box::new(Sphere::new(Vec3::new(0.0, -0.1, -1.0), 0.4,
+                         //Box::new(Lambertian::new(Vec3::new(0.5, 0.4, 0.7))))),
+]
+})
 }
