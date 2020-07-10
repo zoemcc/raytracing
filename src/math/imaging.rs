@@ -61,7 +61,9 @@ pub fn ray_color(rng_source: &mut ThreadRng, ray: Ray, hittable: &Hittable, dept
         Vec3::zero()
     }
     else {
-        if let Some(hit_record) = (*hittable).hit(&ray, 0.001, f64::INFINITY) {
+        // TODO: replace this hard coded t_max limit with a better way to terminate raymarching
+        // was before f64::INFINITY
+        if let Some(hit_record) = (*hittable).hit(&ray, 0.001, 100.0) {
             if let Some((scattered, attenuation)) =
             (*hit_record.material).scatter(rng_source, &ray, hit_record) {
                 attenuation * ray_color(rng_source, scattered, hittable, depth - 1)

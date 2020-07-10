@@ -6,7 +6,7 @@ use crate::math::raytracing::{Ray, HitRecord};
 
 
 pub enum Material {
-    Lambertian(Vec3), 
+    Lambertian(Vec3),
     Metal(Vec3, f64),
     Absorb,
 }
