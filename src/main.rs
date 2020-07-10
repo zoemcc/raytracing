@@ -18,6 +18,7 @@ mod scenes;
 pub use crate::scenes::spherion::{spherion_scene};
 pub use crate::scenes::three_spheres::{three_spheres_scene};
 pub use crate::scenes::first_fractal::{first_fractal_scene};
+pub use crate::scenes::spherion_meets_fractalius::{spherion_meets_fractalius_scene};
 
 
 fn main() -> std::io::Result<()> {
@@ -27,19 +28,19 @@ fn main() -> std::io::Result<()> {
     let aspect_ratio = 16.0 / 9.0;
 
     let print_every_n_rows: u32 = 20;
-    let image_width: u32 = 2560;
+    let image_width: u32 = 10000;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
-    let max_depth = 3;
+    let max_depth = 5;
 
     println!("Image width: {}, Image Height: {}, Samples Per Pixel: {}, Status print every {} rows",
              image_width, image_height, samples_per_pixel, print_every_n_rows);
 
 
-    let vfov: f64 = 35.0;
+    let vfov: f64 = 45.0;
     let aspect_ratio: f64 = (image_width as f64) / (image_height as f64);
-    let lookat: Vec3 = Vec3::new(0.0, 0.0, 0.0);
-    let lookfrom: Vec3 = Vec3::new(-3.0, 4.5, 2.0);
+    let lookat: Vec3 = Vec3::new(-0.0, 0.0, 0.0);
+    let lookfrom: Vec3 = Vec3::new(-3.3, 2.0, 1.75);
     let vup: Vec3 = Vec3::y_axis();
     let cam: Camera = Camera::new(lookfrom, lookat, vup, vfov, aspect_ratio);
 
@@ -49,7 +50,7 @@ fn main() -> std::io::Result<()> {
 
     let thread_counter = Arc::new(AtomicUsize::new(0));
 
-    let world = first_fractal_scene();
+    let world = spherion_meets_fractalius_scene();
     let now_render = SystemTime::now();
     let result_vec: Vec<(u32, u32, Vec3)> = (0..image_width * image_height).into_par_iter().map(|index| {
         let mut rng = rand::thread_rng();
@@ -93,7 +94,8 @@ fn main() -> std::io::Result<()> {
         img.put_pixel(x, y, to_color(pixel_color, samples_per_pixel));
     }
 
-    img.save("./output/fractal_render_shinyworld_2.png").unwrap();
+    img.save("./output/spherion_meets_fractalius_omega.png").unwrap();
+    img.save("./output/spherion_meets_fractalius_omega.jpg").unwrap();
 
     match now_save.elapsed() {
         Ok(elapsed) => {
