@@ -2,6 +2,7 @@ use std::cmp::Ordering::{Equal, Less, Greater};
 
 use crate::math::math3::{Vec3, dot};
 use crate::math::materials::{Material};
+use crate::math::signed_distance::SignedDistanceField;
 
 pub struct Ray {
     pub origin: Vec3,
@@ -51,6 +52,7 @@ pub fn face_normal_adjustment(ray_direction: Vec3, outward_normal: Vec3) -> (Vec
 pub enum Hittable {
     HittableList(Vec<Hittable>),
     Sphere(Vec3, f64, Material),
+    Raymarcher(SignedDistanceField, usize, f64, Material),
 }
 
 impl Hittable {
@@ -93,7 +95,30 @@ impl Hittable {
                     }
                 }
                 None
-            }
+            },
+
+            Hittable::Raymarcher(distance_field, max_march_steps,
+                                 min_distance, material) => {
+                let mut t_cur = t_min;
+                for step in 0..(*max_march_steps) {
+                    let cur_point = ray.at(t_cur);
+                    let cur_distance = distance_field.distance_estimate(cur_point);
+                    if cur_distance < *min_distance {
+                        let outward_normal: Vec3 = distance_field.normal_estimate(cur_point);
+                        //let normal: Vec3 = -ray.dir;
+                        let (normal, front_face) =
+                            face_normal_adjustment(ray.dir, outward_normal);
+                        return Some(HitRecord::new(cur_point, normal, &material, t_cur, front_face))
+                    }
+                    else {
+                        t_cur += cur_distance;
+                        if t_cur > t_max {return None}
+                    }
+                }
+                None
+            },
         }
     }
 }
+
+
