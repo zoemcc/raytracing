@@ -27,10 +27,10 @@ fn main() -> std::io::Result<()> {
     //let aspect_ratio = 1.0;
 
     let print_every_n_rows: u32 = 20;
-    let image_width: u32 = 2000;
+    let image_width: u32 = 25000;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
-    let max_depth = 4;
+    let max_depth = 2;
 
     println!("Image width: {}, Image Height: {}, Samples Per Pixel: {}, Status print every {} rows",
              image_width, image_height, samples_per_pixel, print_every_n_rows);
@@ -84,7 +84,7 @@ fn main() -> std::io::Result<()> {
         img.put_pixel(x, y, to_color(pixel_color, samples_per_pixel));
     }
 
-    img.save("./output/signed_distance_sierpinski_second.png").unwrap();
+    img.save("./output/signed_distance_sierpinski_omegasphere.jpg").unwrap();
 
     match now_save.elapsed() {
         Ok(elapsed) => {
