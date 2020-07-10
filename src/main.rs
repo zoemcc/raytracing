@@ -1,5 +1,7 @@
 extern crate image;
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime};
 use rand::Rng;
 use rand::prelude::ThreadRng;
@@ -10,8 +12,7 @@ mod math;
 pub use crate::math::math3::{Vec3, dot, random_vec_in_unit_sphere, reflect, random_unit_vector};
 pub use crate::math::raytracing::{Ray, HitRecord, Hittable};
 pub use crate::math::imaging::{Camera, to_color, ray_color};
-pub use crate::math::materials::{Material, Metal, Lambertian};
-pub use crate::math::hittables::{Sphere};
+pub use crate::math::materials::{Material};
 
 mod scenes;
 pub use crate::scenes::spherion::{spherion_scene};
@@ -24,38 +25,41 @@ fn main() -> std::io::Result<()> {
 
 
     let aspect_ratio = 16.0 / 9.0;
-    //let aspect_ratio = 1.0;
 
     let print_every_n_rows: u32 = 20;
-    let image_width: u32 = 25000;
+    let image_width: u32 = 1000;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
-    let max_depth = 2;
+    let max_depth = 50;
 
     println!("Image width: {}, Image Height: {}, Samples Per Pixel: {}, Status print every {} rows",
              image_width, image_height, samples_per_pixel, print_every_n_rows);
 
 
-    let cam: Camera = Camera::new();
+    let vfov: f64 = 35.0;
+    let aspect_ratio: f64 = (image_width as f64) / (image_height as f64);
+    let lookat: Vec3 = Vec3::new(0.0, 0.0, 0.0);
+    let lookfrom: Vec3 = Vec3::new(-2.0, 2.0, 1.0);
+    let vup: Vec3 = Vec3::y_axis();
+    let cam: Camera = Camera::new(lookfrom, lookat, vup, vfov, aspect_ratio);
 
     //let mut imgbuf = image::ImageBuffer::new(image_width, image_height);
 
     println!("Starting to render image.");
 
+    let thread_counter = Arc::new(AtomicUsize::new(0));
+
+    let world = spherion_scene();
     let now_render = SystemTime::now();
     let result_vec: Vec<(u32, u32, Vec3)> = (0..image_width * image_height).into_par_iter().map(|index| {
         let mut rng = rand::thread_rng();
 
-        let world = first_fractal_scene();
 
         let x = index as u32 % image_width;
         let y = (index as u32 - x) / image_width;
         let i = x as f64;
         let j = ((image_height - 1) - y) as f64;
 
-        if index as u32 % (print_every_n_rows * image_width) == 0 {
-            println!("Pixel (x, y): ({}, {}), Rows remaining: {}", x, y, image_height - y);
-        }
 
         let pixel_color: Vec3 = (0..samples_per_pixel).map(|_| {
             let u = (i + rng.gen_range(0.0, 1.0)) / (image_width - 1) as f64;
@@ -63,6 +67,11 @@ fn main() -> std::io::Result<()> {
             let ray = cam.get_ray(u, v);
             ray_color(&mut rng, ray, &world, max_depth)
         }).fold(Vec3::zero(), |x, y| x + y);
+        let count = thread_counter.fetch_add(1, Ordering::SeqCst);
+        if count as u32 % (print_every_n_rows * image_width) == 0 {
+            let rows_remaining = image_height - ((count as u32) / image_width);
+            println!("Rows remaining: {}, Percent left to go: {}", rows_remaining, 100.0 * rows_remaining as f64 / image_height as f64);
+        }
         (x, y, pixel_color)
     }).collect();
 
@@ -84,7 +93,7 @@ fn main() -> std::io::Result<()> {
         img.put_pixel(x, y, to_color(pixel_color, samples_per_pixel));
     }
 
-    img.save("./output/signed_distance_sierpinski_omegasphere.jpg").unwrap();
+    img.save("./output/spherion_eye_look_test.png").unwrap();
 
     match now_save.elapsed() {
         Ok(elapsed) => {

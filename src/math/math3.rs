@@ -151,6 +151,14 @@ pub fn dot(v1: Vec3, v2: Vec3) -> f64 {
     v1.e[0] * v2.e[0] + v1.e[1] * v2.e[1] + v1.e[2] * v2.e[2]
 }
 
+pub fn cross(v1: Vec3, v2: Vec3) -> Vec3 {
+    Vec3::new(
+        v1.e[1] * v2.e[2] - v1.e[2] * v2.e[1],
+        v1.e[2] * v2.e[0] - v1.e[0] * v2.e[2],
+        v1.e[0] * v2.e[1] - v1.e[1] * v2.e[0]
+    )
+}
+
 pub fn reflect(vec: Vec3, normal: Vec3) -> Vec3 {
     vec - 2.0 * dot(vec, normal) * normal
 }
