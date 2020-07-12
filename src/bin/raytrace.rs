@@ -8,27 +8,35 @@ use rand::prelude::ThreadRng;
 use rayon::prelude::*;
 use image::{RgbImage, ImageFormat};
 
-mod math;
-pub use crate::math::math3::{Vec3, dot, random_vec_in_unit_sphere, reflect, random_unit_vector};
-pub use crate::math::raytracing::{Ray, HitRecord, Hittable};
-pub use crate::math::imaging::{Camera, to_color, ray_color};
-pub use crate::math::materials::{Material};
 
-mod scenes;
-pub use crate::scenes::spherion::{spherion_scene};
-pub use crate::scenes::three_spheres::{three_spheres_scene};
-pub use crate::scenes::first_fractal::{first_fractal_scene};
-pub use crate::scenes::spherion_meets_fractalius::{spherion_meets_fractalius_scene};
+//mod math;
+//pub use raytracing::math;
+//mod math;
+//mod super::math;
+//pub use crate::math;
+use raytracing::math::math3::{Vec3, dot, random_vec_in_unit_sphere, reflect, random_unit_vector};
+use raytracing::math::raytracing::{Ray, HitRecord, Hittable};
+
+use raytracing::math::imaging::{Camera, to_color, ray_color};
+use raytracing::math::materials::{Material};
+
+//use crate::scenes;
+//mod super::scenes;
+use raytracing::scenes::spherion::{spherion_scene};
+use raytracing::scenes::three_spheres::{three_spheres_scene};
+use raytracing::scenes::first_fractal::{first_fractal_scene};
+use raytracing::scenes::spherion_meets_fractalius::{spherion_meets_fractalius_scene};
 
 
 fn main() -> std::io::Result<()> {
+
     println!("Configuring viewport and image buffer.");
 
 
     let aspect_ratio = 16.0 / 9.0;
 
     let print_every_n_rows: u32 = 20;
-    let image_width: u32 = 10000;
+    let image_width: u32 = 100;
     let image_height: u32 = (image_width as f64 / aspect_ratio).floor() as u32;
     let samples_per_pixel = 100;
     let max_depth = 5;
@@ -94,8 +102,9 @@ fn main() -> std::io::Result<()> {
         img.put_pixel(x, y, to_color(pixel_color, samples_per_pixel));
     }
 
-    img.save("./output/spherion_meets_fractalius_omega.png").unwrap();
-    img.save("./output/spherion_meets_fractalius_omega.jpg").unwrap();
+    let savepath =  "./output/throwaway";
+    img.save(format!("{}.{}", savepath, "png")).unwrap();
+    img.save(format!("{}.{}", savepath, "jpg")).unwrap();
 
     match now_save.elapsed() {
         Ok(elapsed) => {
@@ -111,6 +120,8 @@ fn main() -> std::io::Result<()> {
 
     Ok(())
 }
+
+
 
 
 /* loading/reencoding code

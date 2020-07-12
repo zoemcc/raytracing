@@ -1,4 +1,3 @@
-use rand::Rng;
 use rand::prelude::ThreadRng;
 
 use crate::math::math3::{Vec3, cross};

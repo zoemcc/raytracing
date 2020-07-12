@@ -163,6 +163,8 @@ pub fn reflect(vec: Vec3, normal: Vec3) -> Vec3 {
     vec - 2.0 * dot(vec, normal) * normal
 }
 
+
+#[allow(unused_assignments)]
 pub fn random_vec_in_unit_sphere(rng_source: &mut ThreadRng) -> Vec3 {
     let mut random_vec: Vec3 = Vec3::zero();
 

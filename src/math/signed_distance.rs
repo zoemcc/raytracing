@@ -1,7 +1,4 @@
-use crate::math::math3::{Vec3, dot};
-use crate::math::materials::{Material};
-use crate::math::raytracing::{Ray, HitRecord, Hittable, face_normal_adjustment};
-use crate::random_vec_in_unit_sphere;
+use crate::math::math3::{Vec3};
 
 pub enum SignedDistanceField {
     Sphere(Vec3, f64),
@@ -19,7 +16,7 @@ impl SignedDistanceField {
             Self::SierpinskiTetrasphere(center, num_fractal_iterations) => {
                 let mut cur_vec = point - *center;
                 let offset = Vec3::one();
-                for n in 0..(*num_fractal_iterations) {
+                for _ in 0..(*num_fractal_iterations) {
                     if cur_vec.x() + cur_vec.y() < 0.0 {
                         cur_vec = Vec3::new(-cur_vec.y(), -cur_vec.x(), cur_vec.z());
                     }
@@ -38,12 +35,12 @@ impl SignedDistanceField {
 
     pub fn normal_estimate(&self, point: Vec3) -> Vec3 {
         match self {
-            Self::Sphere(center, radius) => {
+            Self::Sphere(center, _) => {
                 let dif_to_center = point - *center;
                 dif_to_center.unit_vector()
             },
 
-            Self::SierpinskiTetrasphere(center, num_fractal_iterations) => {
+            Self::SierpinskiTetrasphere(_, _) => {
                 // TODO: placeholder! DO NOT USE FOR specular reflections!
                 Vec3::z_axis()
             }

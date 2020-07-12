@@ -22,6 +22,7 @@ impl Ray {
     }
 }
 
+#[allow(dead_code)]
 pub struct HitRecord<'a> {
     pub point: Vec3,
     pub normal: Vec3,
@@ -100,7 +101,7 @@ impl Hittable {
             Hittable::Raymarcher(distance_field, max_march_steps,
                                  min_distance, material) => {
                 let mut t_cur = t_min;
-                for step in 0..(*max_march_steps) {
+                for _ in 0..(*max_march_steps) {
                     let cur_point = ray.at(t_cur);
                     let cur_distance = distance_field.distance_estimate(cur_point);
                     if cur_distance < *min_distance {
