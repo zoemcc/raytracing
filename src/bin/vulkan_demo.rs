@@ -54,7 +54,10 @@ fn main()  -> std::io::Result<()> {
         layout(set = 0, binding = 0, rgba8) uniform writeonly image2D img;
 
         void main() {
-            vec2 norm_coordinates = (gl_GlobalInvocationID.xy + vec2(0.5)) / vec2(imageSize(img));
+            vec2 norm_coordinates = gl_GlobalInvocationID.xy;
+            norm_coordinates.y = (imageSize(img).y - 1.0) - norm_coordinates.y;
+            norm_coordinates = norm_coordinates / vec2(imageSize(img));
+            vec4 to_write = vec4(0.0, 0.0, 0.0, 1.0);
             //vec2 c = (norm_coordinates - vec2(0.5)) * 2.0 - vec2(1.0, 0.0);
 
             float aspect_ratio = 16.0 / 9.0;
@@ -64,15 +67,39 @@ fn main()  -> std::io::Result<()> {
 
             vec3 origin = vec3(0.0, 0.0, 0.0);
             vec3 horizontal = vec3(viewport_width, 0.0, 0.0);
-            vec3 vertical = vec3(0.0, viewport_width, 0.0);
+            vec3 vertical = vec3(0.0, viewport_height, 0.0);
             vec3 lower_left_corner = origin - horizontal / 2.0 - vertical / 2.0 - vec3(0.0, 0.0, focal_length);
 
             vec3 direction = lower_left_corner - origin
                 + norm_coordinates.x * horizontal + norm_coordinates.y * vertical;
             vec3 unit_direction = direction / direction.length();
-            float t = 0.5 * (unit_direction.y + 1.0);
 
-            vec4 to_write = (1.0 - t) * vec4(1.0, 1.0, 1.0, 1.0) + t * vec4(0.5, 0.7, 1.0, 1.0);
+
+            vec3 center = vec3(0.0, 0.0, -1.0);
+            float radius = 0.5;
+
+            vec3 oc = origin - center;
+            float a = dot(direction, direction);
+            float half_b = dot(oc, direction);
+            float c = dot(oc, oc) - radius * radius;
+            float discriminant = half_b * half_b - a * c;
+
+            if (discriminant > 0.0) {
+                float t = (-half_b - sqrt(discriminant)) / a;
+                vec3 ray_at_t = origin + (t * direction);
+                vec3 normal = ray_at_t - center;
+                vec3 unit_normal = normal / normal.length();
+                //vec3 colors = 0.5 * (unit_normal + 1.0);
+                vec3 colors = 0.5 * ((ray_at_t - center) + vec3(1.0, 1.0, 1.0));
+                to_write = vec4(colors, 1.0);
+                //to_write = (1.0 - t) * vec4(1.0, 1.0, 1.0, 1.0) + t * vec4(0.5, 0.7, 1.0, 1.0);
+            }
+            else {
+                float t = 0.5 * (unit_direction.y + 1.0);
+                to_write = (1.0 - t) * vec4(1.0, 1.0, 1.0, 1.0) + t * vec4(0.5, 0.7, 1.0, 1.0);
+            }
+
+
             imageStore(img, ivec2(gl_GlobalInvocationID.xy), to_write);
         }
 
