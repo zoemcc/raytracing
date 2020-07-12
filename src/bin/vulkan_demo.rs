@@ -1,25 +1,20 @@
 extern crate vulkano;
-
-use vulkano::instance::Instance;
-use vulkano::instance::InstanceExtensions;
-use vulkano::instance::PhysicalDevice;
-
-use vulkano::device::Device;
-use vulkano::device::DeviceExtensions;
-use vulkano::device::Features;
-
-use vulkano::buffer::BufferUsage;
-use vulkano::buffer::CpuAccessibleBuffer;
-
-use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBuffer};
-
-use vulkano::sync::GpuFuture;
+extern crate image;
 
 use std::sync::Arc;
-use vulkano::pipeline::ComputePipeline;
 
+use vulkano::instance::{Instance, InstanceExtensions, PhysicalDevice};
+use vulkano::device::{Device, DeviceExtensions, Features};
+use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer};
+use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBuffer};
+use vulkano::sync::GpuFuture;
+use vulkano::pipeline::ComputePipeline;
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 use vulkano::descriptor::PipelineLayoutAbstract;
+use vulkano::format::{Format, ClearValue};
+use vulkano::image::{Dimensions, StorageImage};
+
+use image::{ImageBuffer, Rgba};
 
 
 struct BasicStruct {
@@ -155,6 +150,33 @@ fn main()  -> std::io::Result<()> {
     }
 
     println!("Everything Succeeded");
+
+
+    let image = StorageImage::new(device.clone(),
+                                  Dimensions::Dim2d { width: 1024, height: 1024},
+    Format::R8G8B8A8Unorm, Some(queue.family())).unwrap();
+
+    let buf =
+        CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(),
+                                       false,
+                                       (0 .. 1024 * 1024 * 4).map(|_| 0u8))
+            .expect("failed to create buffer");
+
+    let mut builder = AutoCommandBufferBuilder::new(device.clone(), queue.family()).unwrap();
+    builder
+        .clear_color_image(image.clone(), ClearValue::Float([0.0, 0.0, 1.0, 1.0])).unwrap()
+        .copy_image_to_buffer(image.clone(), buf.clone()).unwrap();
+    let command_buffer = builder.build().unwrap();
+
+    let finished = command_buffer.execute(queue.clone()).unwrap();
+
+    finished.then_signal_fence_and_flush().unwrap()
+        .wait(None).unwrap();
+
+    let buffer_content = buf.read().unwrap();
+    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(1024, 1024, &buffer_content[..]).unwrap();
+
+    image.save("./output/image.png").unwrap();
 
 
     Ok(())
