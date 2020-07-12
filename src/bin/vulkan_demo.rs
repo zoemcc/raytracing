@@ -40,7 +40,7 @@ fn main()  -> std::io::Result<()> {
     let queue = queues.next().unwrap();
 
     let image = StorageImage::new(device.clone(),
-                                  Dimensions::Dim2d { width: 1024, height: 1024},
+                                  Dimensions::Dim2d { width: 1280, height: 720},
                                   Format::R8G8B8A8Unorm, Some(queue.family())).unwrap();
 
     mod cs {
@@ -55,22 +55,24 @@ fn main()  -> std::io::Result<()> {
 
         void main() {
             vec2 norm_coordinates = (gl_GlobalInvocationID.xy + vec2(0.5)) / vec2(imageSize(img));
-            vec2 c = (norm_coordinates - vec2(0.5)) * 2.0 - vec2(1.0, 0.0);
+            //vec2 c = (norm_coordinates - vec2(0.5)) * 2.0 - vec2(1.0, 0.0);
 
-            vec2 z = vec2(0.0, 0.0);
-            float i;
-            for (i = 0.0; i < 1.0; i += 0.005) {
-                z = vec2(
-                    z.x * z.x - z.y * z.y + c.x,
-                    z.y * z.x + z.x * z.y + c.y
-                );
+            float aspect_ratio = 16.0 / 9.0;
+            float viewport_height = 2.0;
+            float viewport_width = aspect_ratio * viewport_height;
+            float focal_length = 1.0;
 
-                if (length(z) > 4.0) {
-                    break;
-                }
-            }
+            vec3 origin = vec3(0.0, 0.0, 0.0);
+            vec3 horizontal = vec3(viewport_width, 0.0, 0.0);
+            vec3 vertical = vec3(0.0, viewport_width, 0.0);
+            vec3 lower_left_corner = origin - horizontal / 2.0 - vertical / 2.0 - vec3(0.0, 0.0, focal_length);
 
-            vec4 to_write = vec4(vec3(i), 1.0);
+            vec3 direction = lower_left_corner - origin
+                + norm_coordinates.x * horizontal + norm_coordinates.y * vertical;
+            vec3 unit_direction = direction / direction.length();
+            float t = 0.5 * (unit_direction.y + 1.0);
+
+            vec4 to_write = (1.0 - t) * vec4(1.0, 1.0, 1.0, 1.0) + t * vec4(0.5, 0.7, 1.0, 1.0);
             imageStore(img, ivec2(gl_GlobalInvocationID.xy), to_write);
         }
 
@@ -94,7 +96,7 @@ fn main()  -> std::io::Result<()> {
                 .descriptor_set_layout(0)
                 .unwrap()
                 .clone(),
-        )
+            )
             .add_image(image.clone())
             .unwrap()
             .build()
@@ -105,13 +107,13 @@ fn main()  -> std::io::Result<()> {
         device.clone(),
         BufferUsage::all(),
         false,
-        (0..1024 * 1024 * 4).map(|_| 0u8),
+        (0..1280 * 720 * 4).map(|_| 0u8),
     )
         .expect("failed to create buffer");
 
     let mut builder = AutoCommandBufferBuilder::new(device.clone(), queue.family()).unwrap();
     builder
-        .dispatch([1024 / 8, 1024 / 8, 1], compute_pipeline.clone(), set.clone(), ())
+        .dispatch([1280 / 8, 720 / 8, 1], compute_pipeline.clone(), set.clone(), ())
         .unwrap()
         .copy_image_to_buffer(image.clone(), buf.clone())
         .unwrap();
@@ -123,7 +125,7 @@ fn main()  -> std::io::Result<()> {
         .wait(None).unwrap();
 
     let buffer_content = buf.read().unwrap();
-    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(1024, 1024, &buffer_content[..]).unwrap();
+    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(1280, 720, &buffer_content[..]).unwrap();
 
     image.save("./output/image.png").unwrap();
 
