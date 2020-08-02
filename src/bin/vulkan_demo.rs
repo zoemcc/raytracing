@@ -39,8 +39,10 @@ fn main()  -> std::io::Result<()> {
 
     let queue = queues.next().unwrap();
 
+    let (width, height) = (1280, 720);
+
     let image = StorageImage::new(device.clone(),
-                                  Dimensions::Dim2d { width: 1280, height: 720},
+                                  Dimensions::Dim2d { width, height},
                                   Format::R8G8B8A8Unorm, Some(queue.family())).unwrap();
 
     mod cs {
@@ -134,13 +136,13 @@ fn main()  -> std::io::Result<()> {
         device.clone(),
         BufferUsage::all(),
         false,
-        (0..1280 * 720 * 4).map(|_| 0u8),
+        (0..width * height * 4).map(|_| 0u8),
     )
         .expect("failed to create buffer");
 
     let mut builder = AutoCommandBufferBuilder::new(device.clone(), queue.family()).unwrap();
     builder
-        .dispatch([1280 / 8, 720 / 8, 1], compute_pipeline.clone(), set.clone(), ())
+        .dispatch([width / 8, height / 8, 1], compute_pipeline.clone(), set.clone(), ())
         .unwrap()
         .copy_image_to_buffer(image.clone(), buf.clone())
         .unwrap();
@@ -152,7 +154,7 @@ fn main()  -> std::io::Result<()> {
         .wait(None).unwrap();
 
     let buffer_content = buf.read().unwrap();
-    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(1280, 720, &buffer_content[..]).unwrap();
+    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, &buffer_content[..]).unwrap();
 
     image.save("./output/image.png").unwrap();
 
