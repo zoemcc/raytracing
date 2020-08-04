@@ -351,6 +351,7 @@ fn main() {
     let mut previous_frame_end = Some(sync::now(device.clone()).boxed());
 
     let start_time = SystemTime::now();
+    let mut frame_counter: i64 = 0;
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -427,8 +428,9 @@ fn main() {
 
                 let cur_time = SystemTime::now();
                 let time_since_start = cur_time.duration_since(start_time).unwrap().as_secs_f32();
-                let angular_speed = TAU / 2.0;
-                let vertex_buffer_new = time_to_vertex_buffer(time_since_start, angular_speed, 1.0, device.clone());
+                let angular_speed = TAU / 5.0;
+                let vertex_buffer_new = time_to_vertex_buffer(
+                    time_since_start, angular_speed, 1.0, device.clone());
 
                 // In order to draw, we have to build a *command buffer*. The command buffer object holds
                 // the list of commands that are going to be executed.
@@ -447,8 +449,8 @@ fn main() {
 
                 builder
                     // Before we can draw, we have to *enter a render pass*. There are two methods to do
-                    // this: `draw_inline` and `draw_secondary`. The latter is a bit more advanced and is
                     // not covered here.
+                    // this: `draw_inline` and `draw_secondary`. The latter is a bit more advanced and is
                     //
                     // The third parameter builds the list of values to clear the attachments with. The API
                     // is similar to the list of attachments when building the framebuffers, except that
@@ -490,6 +492,10 @@ fn main() {
                     // the GPU has finished executing the command buffer that draws the triangle.
                     .then_swapchain_present(queue.clone(), swapchain.clone(), image_num)
                     .then_signal_fence_and_flush();
+
+                frame_counter += 1;
+                let fps = frame_counter as f32 / time_since_start;
+                println!("Frame: {}, FPS: {}", frame_counter, fps);
 
                 match future {
                     Ok(future) => {
